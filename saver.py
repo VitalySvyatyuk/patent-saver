@@ -18,8 +18,17 @@ import threading
 import os
 import shutil
 import csv
-# from pprint import pprint
+import time
+import fileinput
+import sys
 
+
+if os.path.exists("tmp"):
+    shutil.rmtree("tmp")
+if os.path.isfile("errors.txt"):
+    os.remove("errors.txt")
+if os.path.isfile("errors2.txt"):
+    os.remove("errors2.txt")
 
 def year_validator(date):
     try:
@@ -47,7 +56,7 @@ if " " in QUERY:
     query_url = QUERY.replace(" ", "%2B")
     query_filename = QUERY.replace(" ", "_")
 
-print query_url, query_filename, YEAR_TO, YEAR_FROM
+print "Searching '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
 
 years = abs(int(YEAR_TO) - int(YEAR_FROM))
 days = 365 * (years + 1)
@@ -67,27 +76,95 @@ if not os.path.exists("tmp"):
     os.makedirs("tmp")
 
 def retriever(i, j):
-
     url = "https://patents.google.com/xhr/query?url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
     .format(query_url, j, i)
     filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
 
-    print filename
+    try:
+        testfile = urllib.URLopener()
+        testfile.retrieve(url, filename)
+    except:
+        time.sleep(1)
+        testfile = urllib.URLopener()
+        testfile.retrieve(url, filename)
+        with open('errors.txt', 'a') as errors:
+            errors.write(url + " " + filename + "\n")
 
-    testfile = urllib.URLopener()
-    testfile.retrieve(url, filename)
+def add_retriever(url, filename):
+    try:
+        newfile = urllib.URLopener()
+        newfile.retrieve(url, filename)
+        print "Success"
+    except:
+        print "Fail"
+        with open("errors2.txt", "a") as err2:
+            err2.write(url + " " + filename + "\n")
+
+fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, YEAR_FROM, YEAR_TO)
+open(fl, 'a').close()
 
 threads = []
 for i, j in zip(date_list1, date_list2):
     t = threading.Thread(target=retriever, args=(i, j,))
     threads.append(t)
+
+thread_of_threads = []
+started = []
+
+print "Downloading..."
+
 for x in threads:
+    # time.sleep(0.04)
     x.start()
-for x in threads:
+    started.append(x)
+    if threads.index(x) % 100 == 0:
+        for x in started:
+            # time.sleep(0.01)
+            x.join()
+        started = []
+
+for x in started:
     x.join()
 
-for csv in os.listdir("tmp"):
+if os.path.isfile("errors.txt"):
+    print "Second attempt..."
+    with open("errors.txt", 'r+') as err:
+        thre = []
+        for er in err:
+            url, filename = er.split(" ")
+            filename = filename.replace("\n", "")
+            t = threading.Thread(target=add_retriever, args=(url, filename,))
+            thre.append(t)
+        for l in thre:
+            time.sleep(0.1)     
+            l.start()
+        for l in thre:
+            l.join()
 
+with open(fl, 'w') as write_to:
+    writer = csv.writer(write_to, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+    writer.writerow(['id', 
+                     'title', 
+                     'assignee', 
+                     'inventor/author', 
+                     'priority date', 
+                     'filing/creation date', 
+                     'publication date', 
+                     'grant date', 
+                     'result link'])
+    for csv_file in os.listdir("tmp"):
+        with open('tmp/' + csv_file, 'rb') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row[0] != "id":
+                    if row[0] != "search URL:":
+                        writer.writerow(row)
 
+print "Success! File -> " + str(fl)
+
+if os.path.isfile("errors.txt"):
+    os.remove("errors.txt")
+if os.path.isfile("errors2.txt"):
+    os.remove("errors2.txt")
 if os.path.exists("tmp"):
     shutil.rmtree("tmp")
