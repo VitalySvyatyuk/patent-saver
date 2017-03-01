@@ -85,8 +85,6 @@ def retriever(i, j):
         testfile.retrieve(url, filename)
     except:
         time.sleep(1)
-        testfile = urllib.URLopener()
-        testfile.retrieve(url, filename)
         with open('errors.txt', 'a') as errors:
             errors.write(url + " " + filename + "\n")
 
