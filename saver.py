@@ -17,6 +17,7 @@ import datetime
 import threading
 import os
 import shutil
+import csv
 # from pprint import pprint
 
 
@@ -86,7 +87,7 @@ for x in threads:
     x.join()
 
 for csv in os.listdir("tmp"):
-    
+
 
 if os.path.exists("tmp"):
     shutil.rmtree("tmp")
