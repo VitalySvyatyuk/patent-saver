@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 
+# Notes
+# Adding "country" and "grant year" to the end of the line. Is this ok?
+# By the way, now we select patents by filing date, not by the grant date.
+# I can change this if it make sence.
+
+
 # entity name -- patent title -- filing date --       issue date --    author name --  patent number -- application number
 # PATENT         title           filing/creation date publication date inventor/author
 # id -- title -- assignee -- inventor/author -- priority date -- filing/creation date -- publication date -- 
-
-
-"""
-1. Take data from Google Patents, give arguments: query and dates
-2. Edit CSV
-3. Save CSV
-"""
 
 import urllib
 import json
@@ -21,6 +20,7 @@ import csv
 import time
 import fileinput
 import sys
+from country_codes import CCODES
 
 
 if os.path.exists("tmp"):
@@ -29,6 +29,8 @@ if os.path.isfile("errors.txt"):
     os.remove("errors.txt")
 if os.path.isfile("errors2.txt"):
     os.remove("errors2.txt")
+
+
 
 def year_validator(date):
     try:
@@ -56,7 +58,7 @@ if " " in QUERY:
     query_url = QUERY.replace(" ", "%2B")
     query_filename = QUERY.replace(" ", "_")
 
-print "Searching '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
+print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
 
 years = abs(int(YEAR_TO) - int(YEAR_FROM))
 days = 365 * (years + 1)
@@ -68,7 +70,8 @@ else:
 
 base_date = base_date + "1231"
 base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
-date_list = [datetime.datetime.strftime(base_date - datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
+date_list = [datetime.datetime.strftime(base_date - 
+             datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
 date_list1 = date_list[1:]
 date_list2 = date_list[:-1]
 
@@ -76,8 +79,9 @@ if not os.path.exists("tmp"):
     os.makedirs("tmp")
 
 def retriever(i, j):
-    url = "https://patents.google.com/xhr/query?url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
-    .format(query_url, j, i)
+    url = "https://patents.google.com/xhr/query?" + \
+           "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
+           .format(query_url, j, i)
     filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
 
     try:
@@ -98,7 +102,8 @@ def add_retriever(url, filename):
         with open("errors2.txt", "a") as err2:
             err2.write(url + " " + filename + "\n")
 
-fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, YEAR_FROM, YEAR_TO)
+fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
+                                      YEAR_FROM, YEAR_TO)
 open(fl, 'a').close()
 
 threads = []
@@ -108,8 +113,6 @@ for i, j in zip(date_list1, date_list2):
 
 thread_of_threads = []
 started = []
-
-print "Downloading..."
 
 for x in threads:
     # time.sleep(0.04)
@@ -131,7 +134,8 @@ if os.path.isfile("errors.txt"):
         for er in err:
             url, filename = er.split(" ")
             filename = filename.replace("\n", "")
-            t = threading.Thread(target=add_retriever, args=(url, filename,))
+            t = threading.Thread(target=add_retriever, 
+                                 args=(url, filename,))
             thre.append(t)
         for l in thre:
             time.sleep(0.1)     
@@ -140,7 +144,9 @@ if os.path.isfile("errors.txt"):
             l.join()
 
 with open(fl, 'w') as write_to:
-    writer = csv.writer(write_to, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
+    writer = csv.writer(write_to, delimiter=',',
+                                  quotechar='"', 
+                                  quoting=csv.QUOTE_ALL)
     writer.writerow(['id', 
                      'title', 
                      'assignee', 
@@ -149,13 +155,17 @@ with open(fl, 'w') as write_to:
                      'filing/creation date', 
                      'publication date', 
                      'grant date', 
-                     'result link'])
+                     'result link', 
+                     'country',
+                     'grant year'])
     for csv_file in os.listdir("tmp"):
         with open('tmp/' + csv_file, 'rb') as f:
             reader = csv.reader(f)
             for row in reader:
                 if row[0] != "id":
                     if row[0] != "search URL:":
+                        row.append(CCODES[row[0][:2]])
+                        row.append(row[7][:4])
                         writer.writerow(row)
 
 print "Success! File -> " + str(fl)
