@@ -14,6 +14,7 @@ import csv
 import time
 import fileinput
 import sys
+from operator import itemgetter
 from country_codes import CCODES
 
 
@@ -108,9 +109,7 @@ if SEARCH_IN == "g":
         t = threading.Thread(target=retriever, args=(i, j,))
         threads.append(t)
 
-    thread_of_threads = []
     started = []
-
     for x in threads:
         x.start()
         started.append(x)
@@ -123,7 +122,7 @@ if SEARCH_IN == "g":
         x.join()
 
     while len(errors_) != 0:
-        print str(len(errors_)) + " urls left.."
+        print "URLs left: " + str(len(errors_))
         thre = []
         for error_ in errors_:
             url = error_[0]
@@ -151,6 +150,7 @@ if SEARCH_IN == "g":
                          'grant date', 
                          'result link', 
                          'country',
+                         'country code',
                          'grant year'])
         for csv_file in os.listdir("tmp"):
             with open('tmp/' + csv_file, 'rb') as f:
@@ -159,32 +159,85 @@ if SEARCH_IN == "g":
                     if row[0] != "id":
                         if row[0] != "search URL:":
                             row.append(CCODES[row[0][:2]])
+                            row.append(row[0][:2])
                             row.append(row[7][:4])
                             writer.writerow(row)
 
     print "Success! File -> " + str(fl)
 
+    assignees = {}
+    assignees_row = []
+    with open(fl, 'r') as read_from:
+        datareader = csv.reader(read_from, delimiter=',', quotechar='"')
+        iterdatareader = iter(datareader)
+        next(iterdatareader)
+        for line in iterdatareader:
+            if line[2] in assignees:
+                assignees[line[2]] += 1
+            else:
+                assignees[line[2]] = 1
+                assignees_row.append((line[2], line[9], line[10]))
+
+    fl_srt_assign = fl.replace(".csv", "_by_assignee.csv")
+    rows = []
+    for assign in assignees_row:
+        row = []
+        row.append(assign[0])
+        row.append(assignees[assign[0]])
+        row.append(assign[1])
+        row.append(assign[2])
+        rows.append(row)
+    rows_sorted_by_sount = sorted(rows, key=itemgetter(1), reverse=True)
+
+
+    with open(fl_srt_assign, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_sorted_by_sount:
+            writer.writerow(row)
+
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
 # www.patentsview.org
-elif SEARCH_IN == "p":
-    query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
-            '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
-            '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
-            '{"_gte":{"app_date":"%s-01-01"}},' \
-            '{"_lte":{"app_date":"%s-01-01"}}]}' \
-            '&f=["app_country",' \
-               '"patent_number",' \
-               '"patent_year",' \
-               '"patent_title",' \
-               '"app_date",' \
-               '"patent_date",' \
-               '"patent_year",'  \
-               '"inventor_first_name",' \
-               '"inventor_last_name"]' \
-               % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
+# elif SEARCH_IN == "p":
+#     query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
+#             '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
+#             '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
+#             '{"_gte":{"app_date":"%s-01-01"}},' \
+#             '{"_lte":{"app_date":"%s-01-01"}}]}' \
+#             '&f=["app_country",' \
+#                '"patent_number",' \
+#                '"patent_year",' \
+#                '"patent_title",' \
+#                '"app_date",' \
+#                '"patent_date",' \
+#                '"patent_year",'  \
+#                '"inventor_first_name",' \
+#                '"inventor_last_name"]' \
+#                % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
 
-    url = query.replace(" ", "%20")
-    response = urllib.urlopen(url)
-    dat = json.load(response)
-    print dat
+#     url = query.replace(" ", "%20")
+#     response = urllib.urlopen(url)
+#     dat = json.load(response)
+
+#     filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
+#                                         .replace(" ", "_")
+#     print filename
+#     with open(filename, 'w') as write_to:
+#         writer = csv.writer(write_to, delimiter=',',
+#                                       quotechar='"', 
+#                                       quoting=csv.QUOTE_ALL)
+#         writer.writerow(['patent number',  
+#                          'patent title', 
+#                          'filing/creation date', 
+#                          'grant date', 
+#                          'grant year',
+#                          'country',
+#                          'country code'])
+
+#         writer.writerow()
