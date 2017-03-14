@@ -19,12 +19,6 @@ from country_codes import CCODES
 
 if os.path.exists("tmp"):
     shutil.rmtree("tmp")
-if os.path.isfile("errors.txt"):
-    os.remove("errors.txt")
-if os.path.isfile("errors2.txt"):
-    os.remove("errors2.txt")
-
-
 
 def year_validator(date):
     try:
@@ -34,6 +28,10 @@ def year_validator(date):
     except:
         pass
 
+SEARCH_IN = ""
+while SEARCH_IN.lower() != "g" and SEARCH_IN.lower() != "p":
+    SEARCH_IN = raw_input("Where to look at? Google (g), " + \
+                          "or patentsview.org (p): ")
 QUERY = ""
 while QUERY == "":
     QUERY = raw_input("Please specify query: ")
@@ -46,88 +44,90 @@ YEAR_TO = None
 while not year_validator(YEAR_TO):
     YEAR_TO = raw_input("Year to: ")
 
-query_url = None
-query_filename = None
-if " " in QUERY:
-    query_url = QUERY.replace(" ", "%2B")
-    query_filename = QUERY.replace(" ", "_")
+# patents.google.com
+if SEARCH_IN == "g":
+    query_url = None
+    query_filename = None
+    if " " in QUERY:
+        query_url = QUERY.replace(" ", "%2B")
+        query_filename = QUERY.replace(" ", "_")
 
-print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
+    print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
 
-years = abs(int(YEAR_TO) - int(YEAR_FROM))
-days = 365 * (years + 1)
-base_date = None
-if YEAR_FROM >= YEAR_TO:
-    base_date = YEAR_FROM
-else:
-    base_date = YEAR_TO
+    years = abs(int(YEAR_TO) - int(YEAR_FROM))
+    days = 365 * (years + 1)
+    base_date = None
+    if YEAR_FROM >= YEAR_TO:
+        base_date = YEAR_FROM
+    else:
+        base_date = YEAR_TO
 
-base_date = base_date + "1231"
-base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
-date_list = [datetime.datetime.strftime(base_date - 
-             datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
-date_list1 = date_list[1:]
-date_list2 = date_list[:-1]
+    base_date = base_date + "1231"
+    base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
+    date_list = [datetime.datetime.strftime(base_date - 
+                 datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
+    date_list1 = date_list[1:]
+    date_list2 = date_list[:-1]
 
-if not os.path.exists("tmp"):
-    os.makedirs("tmp")
+    if not os.path.exists("tmp"):
+        os.makedirs("tmp")
 
-def retriever(i, j):
-    url = "https://patents.google.com/xhr/query?" + \
-           "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
-           .format(query_url, j, i)
-    filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
+    errors_ = []
+    def retriever(i, j):
+        url = "https://patents.google.com/xhr/query?" + \
+              "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
+              .format(query_url, j, i)
+        filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
 
-    try:
-        testfile = urllib.URLopener()
-        testfile.retrieve(url, filename)
-    except:
-        time.sleep(1)
-        with open('errors.txt', 'a') as errors:
-            errors.write(url + " " + filename + "\n")
+        try:
+            testfile = urllib.URLopener()
+            testfile.retrieve(url, filename)
+            if (url, filename) in errors_:
+                errors_.remove((url, filename))
+        except:
+            time.sleep(1)
+            if (url, filename) not in errors_:
+                errors_.append((url, filename))
 
-def add_retriever(url, filename):
-    try:
-        newfile = urllib.URLopener()
-        newfile.retrieve(url, filename)
-        print "Success"
-    except:
-        print "Fail"
-        with open("errors2.txt", "a") as err2:
-            err2.write(url + " " + filename + "\n")
+    def add_retriever(url, filename):
+        try:
+            newfile = urllib.URLopener()
+            newfile.retrieve(url, filename)
+            if (url, filename) in errors_:
+                errors_.remove((url, filename))
+        except:
+            if (url, filename) not in errors_:
+                errors_.append((url, filename))
 
-fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
-                                      YEAR_FROM, YEAR_TO)
-open(fl, 'a').close()
+    fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
+                                          YEAR_FROM, YEAR_TO)
+    open(fl, 'a').close()
 
-threads = []
-for i, j in zip(date_list1, date_list2):
-    t = threading.Thread(target=retriever, args=(i, j,))
-    threads.append(t)
+    threads = []
+    for i, j in zip(date_list1, date_list2):
+        t = threading.Thread(target=retriever, args=(i, j,))
+        threads.append(t)
 
-thread_of_threads = []
-started = []
+    thread_of_threads = []
+    started = []
 
-for x in threads:
-    # time.sleep(0.04)
-    x.start()
-    started.append(x)
-    if threads.index(x) % 100 == 0:
-        for x in started:
-            # time.sleep(0.01)
-            x.join()
-        started = []
+    for x in threads:
+        x.start()
+        started.append(x)
+        if threads.index(x) % 100 == 0:
+            for x in started:
+                x.join()
+            started = []
 
-for x in started:
-    x.join()
+    for x in started:
+        x.join()
 
-if os.path.isfile("errors.txt"):
-    print "Second attempt..."
-    with open("errors.txt", 'r+') as err:
+    while len(errors_) != 0:
+        print str(len(errors_)) + " urls left.."
         thre = []
-        for er in err:
-            url, filename = er.split(" ")
-            filename = filename.replace("\n", "")
+        for error_ in errors_:
+            url = error_[0]
+            filename = error_[1]
             t = threading.Thread(target=add_retriever, 
                                  args=(url, filename,))
             thre.append(t)
@@ -137,36 +137,54 @@ if os.path.isfile("errors.txt"):
         for l in thre:
             l.join()
 
-with open(fl, 'w') as write_to:
-    writer = csv.writer(write_to, delimiter=',',
-                                  quotechar='"', 
-                                  quoting=csv.QUOTE_ALL)
-    writer.writerow(['id', 
-                     'title', 
-                     'assignee', 
-                     'inventor/author', 
-                     'priority date', 
-                     'filing/creation date', 
-                     'publication date', 
-                     'grant date', 
-                     'result link', 
-                     'country',
-                     'grant year'])
-    for csv_file in os.listdir("tmp"):
-        with open('tmp/' + csv_file, 'rb') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if row[0] != "id":
-                    if row[0] != "search URL:":
-                        row.append(CCODES[row[0][:2]])
-                        row.append(row[7][:4])
-                        writer.writerow(row)
+    with open(fl, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['id', 
+                         'title', 
+                         'assignee', 
+                         'inventor/author', 
+                         'priority date', 
+                         'filing/creation date', 
+                         'publication date', 
+                         'grant date', 
+                         'result link', 
+                         'country',
+                         'grant year'])
+        for csv_file in os.listdir("tmp"):
+            with open('tmp/' + csv_file, 'rb') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if row[0] != "id":
+                        if row[0] != "search URL:":
+                            row.append(CCODES[row[0][:2]])
+                            row.append(row[7][:4])
+                            writer.writerow(row)
 
-print "Success! File -> " + str(fl)
+    print "Success! File -> " + str(fl)
 
-if os.path.isfile("errors.txt"):
-    os.remove("errors.txt")
-if os.path.isfile("errors2.txt"):
-    os.remove("errors2.txt")
-if os.path.exists("tmp"):
-    shutil.rmtree("tmp")
+    if os.path.exists("tmp"):
+        shutil.rmtree("tmp")
+# www.patentsview.org
+elif SEARCH_IN == "p":
+    query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
+            '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
+            '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
+            '{"_gte":{"app_date":"%s-01-01"}},' \
+            '{"_lte":{"app_date":"%s-01-01"}}]}' \
+            '&f=["app_country",' \
+               '"patent_number",' \
+               '"patent_year",' \
+               '"patent_title",' \
+               '"app_date",' \
+               '"patent_date",' \
+               '"patent_year",'  \
+               '"inventor_first_name",' \
+               '"inventor_last_name"]' \
+               % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
+
+    url = query.replace(" ", "%20")
+    response = urllib.urlopen(url)
+    dat = json.load(response)
+    print dat
