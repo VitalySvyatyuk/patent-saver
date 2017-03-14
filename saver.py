@@ -201,6 +201,8 @@ if SEARCH_IN == "g":
         for row in rows_sorted_by_sount:
             writer.writerow(row)
 
+    print "Success! File -> " + str(fl_srt_assign)
+
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
 # www.patentsview.org
