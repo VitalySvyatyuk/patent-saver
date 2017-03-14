@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# Notes
-# Adding "country" and "grant year" to the end of the line. Is this ok?
-# By the way, now we select patents by filing date, not by the grant date.
-# I can change this if it make sence.
-
-
 # entity name -- patent title -- filing date --       issue date --    author name --  patent number -- application number
 # PATENT         title           filing/creation date publication date inventor/author
 # id -- title -- assignee -- inventor/author -- priority date -- filing/creation date -- publication date -- 
