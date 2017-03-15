@@ -162,11 +162,12 @@ if SEARCH_IN == "g":
                             row.append(row[0][:2])
                             row.append(row[7][:4])
                             writer.writerow(row)
-
     print "Success! File -> " + str(fl)
 
     assignees = {}
+    assignees_grant = {}
     assignees_row = []
+    assignees_grant_row = []
     with open(fl, 'r') as read_from:
         datareader = csv.reader(read_from, delimiter=',', quotechar='"')
         iterdatareader = iter(datareader)
@@ -177,8 +178,11 @@ if SEARCH_IN == "g":
             else:
                 assignees[line[2]] = 1
                 assignees_row.append((line[2], line[9], line[10]))
+            if (line[2], line[11], line[9], line[10]) in assignees_grant:
+                assignees_grant[(line[2], line[11], line[9], line[10])] += 1
+            else:
+                assignees_grant[(line[2], line[11], line[9], line[10])] = 1
 
-    fl_srt_assign = fl.replace(".csv", "_by_assignee.csv")
     rows = []
     for assign in assignees_row:
         row = []
@@ -187,9 +191,19 @@ if SEARCH_IN == "g":
         row.append(assign[1])
         row.append(assign[2])
         rows.append(row)
-    rows_sorted_by_sount = sorted(rows, key=itemgetter(1), reverse=True)
+    rows_sorted_by_count = sorted(rows, key=itemgetter(1), reverse=True)
 
-
+    for key, value in assignees_grant.items():
+        temp_list = []
+        temp_list.append(key[0])
+        temp_list.append(key[1])
+        temp_list.append(value)
+        temp_list.append(key[2])
+        temp_list.append(key[3])
+        if key[1] != "":
+            assignees_grant_row.append(temp_list)
+    rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
+    fl_srt_assign = fl.replace(".csv", "_by_assignee.csv")
     with open(fl_srt_assign, 'w') as write_to:
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
@@ -198,13 +212,28 @@ if SEARCH_IN == "g":
                          'count', 
                          'country', 
                          'country code'])
-        for row in rows_sorted_by_sount:
+        for row in rows_sorted_by_count:
             writer.writerow(row)
-
     print "Success! File -> " + str(fl_srt_assign)
+
+    fl_srt_assign_grnt = fl.replace(".csv", "_by_grant.csv")
+    with open(fl_srt_assign_grnt, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee',
+                         'grant year', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_gr_srt_by_assig:
+            writer.writerow(row)
+    print "Success! File -> " + str(fl_srt_assign_grnt)
 
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
+
+
 # www.patentsview.org
 # elif SEARCH_IN == "p":
 #     query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
@@ -235,7 +264,8 @@ if SEARCH_IN == "g":
 #                                       quotechar='"', 
 #                                       quoting=csv.QUOTE_ALL)
 #         writer.writerow(['patent number',  
-#                          'patent title', 
+#                          'patent title',
+#                          'inventor/author' 
 #                          'filing/creation date', 
 #                          'grant date', 
 #                          'grant year',
