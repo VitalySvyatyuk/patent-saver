@@ -161,7 +161,8 @@ if SEARCH_IN == "g":
                             row.append(CCODES[row[0][:2]])
                             row.append(row[0][:2])
                             row.append(row[7][:4])
-                            writer.writerow(row)
+                            if row[7] != "":
+                                writer.writerow(row)
     print "Success! File -> " + str(fl)
 
     assignees = {}
