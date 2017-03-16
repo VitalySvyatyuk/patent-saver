@@ -233,43 +233,45 @@ if SEARCH_IN == "g":
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
 
-
 # www.patentsview.org
-# elif SEARCH_IN == "p":
-#     query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
-#             '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
-#             '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
-#             '{"_gte":{"app_date":"%s-01-01"}},' \
-#             '{"_lte":{"app_date":"%s-01-01"}}]}' \
-#             '&f=["app_country",' \
-#                '"patent_number",' \
-#                '"patent_year",' \
-#                '"patent_title",' \
-#                '"app_date",' \
-#                '"patent_date",' \
-#                '"patent_year",'  \
-#                '"inventor_first_name",' \
-#                '"inventor_last_name"]' \
-#                % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
+elif SEARCH_IN == "p":
+    query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
+            '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
+            '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
+            '{"_gte":{"app_date":"%s-01-01"}},' \
+            '{"_lte":{"app_date":"%s-01-01"}}]}' \
+            '&f=["app_country",' \
+               '"patent_number",' \
+               '"patent_year",' \
+               '"patent_title",' \
+               '"app_date",' \
+               '"patent_date",' \
+               '"patent_year",'  \
+               '"inventor_first_name",' \
+               '"inventor_last_name"]' \
+               % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
 
-#     url = query.replace(" ", "%20")
-#     response = urllib.urlopen(url)
-#     dat = json.load(response)
+    url = query.replace(" ", "%20")
+    response = urllib.urlopen(url)
+    dat = json.load(response)
+    data = dat['patents']
 
-#     filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
-#                                         .replace(" ", "_")
-#     print filename
-#     with open(filename, 'w') as write_to:
-#         writer = csv.writer(write_to, delimiter=',',
-#                                       quotechar='"', 
-#                                       quoting=csv.QUOTE_ALL)
-#         writer.writerow(['patent number',  
-#                          'patent title',
-#                          'inventor/author' 
-#                          'filing/creation date', 
-#                          'grant date', 
-#                          'grant year',
-#                          'country',
-#                          'country code'])
-
-#         writer.writerow()
+    filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
+                                        .replace(" ", "_")
+    print dat['patents']
+    print filename
+    with open(filename, 'w') as write_to:
+        row = []
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['patent number',  
+                         'patent title',
+                         'inventor/author' 
+                         'filing/creation date', 
+                         'grant date', 
+                         'grant year',
+                         'country',
+                         'country code'])
+        row[0] = data['patent number']
+        # writer.writerow()
