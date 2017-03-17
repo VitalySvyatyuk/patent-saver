@@ -294,8 +294,8 @@ elif SEARCH_IN == "p":
             for inventor in patent['inventors']:
                 authors += inventor['inventor_first_name'] + \
                            inventor['inventor_last_name'] + ", "
-            inventors = authors[:-4]
-            row.append(authors)
+            inventors = authors[:-2]
+            row.append(inventors)
             row.append(patent['applications'][0]['app_date'])
             row.append(patent['patent_date'])
             row.append(patent['patent_year'])
@@ -309,13 +309,72 @@ elif SEARCH_IN == "p":
     print "Success! File -> " + str(filename)
 
 
+    assignees = {}
+    assignees_grant = {}
+    assignees_row = []
+    assignees_grant_row = []
+    with open(filename, 'r') as read_from:
+        datareader = csv.reader(read_from, delimiter=',', quotechar='"')
+        iterdatareader = iter(datareader)
+        next(iterdatareader)
+        for line in iterdatareader:
+            if line[2] != "":
+                print line
+                if line[2] in assignees:
+                    assignees[line[2]] += 1
+                else:
+                    assignees[line[2]] = 1
+                    assignees_row.append((line[2], line[7], line[8]))
+                if (line[2], line[6], line[7], line[8]) in assignees_grant:
+                    assignees_grant[(line[2], line[6], line[7], line[8])] += 1
+                else:
+                    assignees_grant[(line[2], line[6], line[7], line[8])] = 1
 
-    # filename_srt_assign = fl.replace(".csv", "_by_assignee.csv")
-    # print "Success! File -> " + str(filename_srt_assign)
+    rows = []
+    for assign in assignees_row:
+        row = []
+        row.append(assign[0])
+        row.append(assignees[assign[0]])
+        row.append(assign[1])
+        row.append(assign[2])
+        rows.append(row)
+    rows_sorted_by_count = sorted(rows, key=itemgetter(1), reverse=True)
 
+    for key, value in assignees_grant.items():
+        temp_list = []
+        temp_list.append(key[0])
+        temp_list.append(key[1])
+        temp_list.append(value)
+        temp_list.append(key[2])
+        temp_list.append(key[3])
+        if key[1] != "":
+            assignees_grant_row.append(temp_list)
+    rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
+    fl_srt_assign = filename.replace(".csv", "_by_assignee.csv")
+    with open(fl_srt_assign, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_sorted_by_count:
+            writer.writerow(row)
+    print "Success! File -> " + str(fl_srt_assign)
 
-
-    # filename_assign_grnt = fl.replace(".csv", "_by_grant.csv")
-    # print "Success! File -> " + str(filename_assign_grnt)
+    fl_srt_assign_grnt = filename.replace(".csv", "_by_grant.csv")
+    with open(fl_srt_assign_grnt, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee',
+                         'grant year', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_gr_srt_by_assig:
+            writer.writerow(row)
+    print "Success! File -> " + str(fl_srt_assign_grnt)
 
 
