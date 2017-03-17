@@ -241,16 +241,19 @@ elif SEARCH_IN == "p":
             '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
             '{"_gte":{"app_date":"%s-01-01"}},' \
             '{"_lte":{"app_date":"%s-01-01"}}]}' \
-            '&f=["app_country",' \
-               '"patent_number",' \
-               '"patent_year",' \
-               '"patent_title",' \
-               '"app_date",' \
-               '"patent_date",' \
-               '"patent_year",'  \
-               '"inventor_first_name",' \
-               '"inventor_last_name"]' \
-               % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
+            '&f=["patent_number",' \
+                '"patent_title",' \
+                '"patent_date",' \
+                '"patent_year",' \
+                '"assignee_type",' \
+                '"assignee_country",' \
+                '"assignee_first_name",' \
+                '"assignee_last_name",' \
+                '"assignee_organization",' \
+                '"app_date",' \
+                '"inventor_first_name",' \
+                '"inventor_last_name"]' \
+                % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
 
     url = query.replace(" ", "%20")
     response = urllib.urlopen(url)
@@ -260,14 +263,15 @@ elif SEARCH_IN == "p":
     filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
                                         .replace(" ", "_")
     # print data
-    print filename
+    # print filename
     with open(filename, 'w') as write_to:
         
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
                                       quoting=csv.QUOTE_ALL)
-        writer.writerow(['patent number',  
-                         'patent title',
+        writer.writerow(['number',  
+                         'title',
+                         'assignee',
                          'inventor/author', 
                          'filing/creation date', 
                          'grant date', 
@@ -278,14 +282,40 @@ elif SEARCH_IN == "p":
             row = []
             row.append(patent['patent_number'])
             row.append(patent['patent_title'])
+            if patent['assignees'][0]['assignee_type'] in ['2', '3', '6',
+                                                           '7', '8', '9']:
+                row.append(patent['assignees'][0]['assignee_organization'])
+            elif patent['assignees'][0]['assignee_type'] in ['4', '5']:
+                row.append(patent['assignees'][0]['assignee_first_name'] + " " + \
+                           patent['assignees'][0]['assignee_last_name'])
+            else:
+                row.append("")
             authors = ""
             for inventor in patent['inventors']:
                 authors += inventor['inventor_first_name'] + \
                            inventor['inventor_last_name'] + ", "
+            inventors = authors[:-4]
             row.append(authors)
             row.append(patent['applications'][0]['app_date'])
             row.append(patent['patent_date'])
             row.append(patent['patent_year'])
-            row.append(CCODES[patent['applications'][0]['app_country']])
-            row.append(patent['applications'][0]['app_country'])
-            writer.writerow(row)
+            try:
+                row.append(CCODES[patent['assignees'][0]['assignee_country']])
+                row.append(patent['assignees'][0]['assignee_country'])
+            except:
+                pass
+            row_utf = [x.encode('utf-8') for x in row]
+            writer.writerow(row_utf)
+    print "Success! File -> " + str(filename)
+
+
+
+    # filename_srt_assign = fl.replace(".csv", "_by_assignee.csv")
+    # print "Success! File -> " + str(filename_srt_assign)
+
+
+
+    # filename_assign_grnt = fl.replace(".csv", "_by_grant.csv")
+    # print "Success! File -> " + str(filename_assign_grnt)
+
+
