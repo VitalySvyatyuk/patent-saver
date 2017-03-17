@@ -259,20 +259,33 @@ elif SEARCH_IN == "p":
 
     filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
                                         .replace(" ", "_")
-    print dat['patents']
+    # print data
     print filename
     with open(filename, 'w') as write_to:
-        row = []
+        
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
                                       quoting=csv.QUOTE_ALL)
         writer.writerow(['patent number',  
                          'patent title',
-                         'inventor/author' 
+                         'inventor/author', 
                          'filing/creation date', 
                          'grant date', 
                          'grant year',
                          'country',
                          'country code'])
-        row[0] = data['patent number']
-        # writer.writerow()
+        for patent in data:
+            row = []
+            row.append(patent['patent_number'])
+            row.append(patent['patent_title'])
+            authors = ""
+            for inventor in patent['inventors']:
+                authors += inventor['inventor_first_name'] + \
+                           inventor['inventor_last_name'] + ", "
+            row.append(authors)
+            row.append(patent['applications'][0]['app_date'])
+            row.append(patent['patent_date'])
+            row.append(patent['patent_year'])
+            row.append(CCODES[patent['applications'][0]['app_country']])
+            row.append(patent['applications'][0]['app_country'])
+            writer.writerow(row)
