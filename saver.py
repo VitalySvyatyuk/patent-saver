@@ -16,6 +16,7 @@ import fileinput
 import sys
 from operator import itemgetter
 from country_codes import CCODES
+from queries import QUERIES
 
 
 if os.path.exists("tmp"):
@@ -33,9 +34,9 @@ SEARCH_IN = ""
 while SEARCH_IN.lower() != "g" and SEARCH_IN.lower() != "p":
     SEARCH_IN = raw_input("Where to look at? Google (g), " + \
                           "or patentsview.org (p): ")
-QUERY = ""
-while QUERY == "":
-    QUERY = raw_input("Please specify query: ")
+# QUERY = ""
+# while QUERY == "":
+#     QUERY = raw_input("Please specify query: ")
 
 YEAR_FROM = None
 while not year_validator(YEAR_FROM):
@@ -45,97 +46,148 @@ YEAR_TO = None
 while not year_validator(YEAR_TO):
     YEAR_TO = raw_input("Year to: ")
 
+def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
+    rows = []
+    for assign in assignees_row:
+        row = []
+        row.append(assign[0])
+        row.append(assignees[assign[0]])
+        row.append(assign[1])
+        row.append(assign[2])
+        rows.append(row)
+    rows_sorted_by_count = sorted(rows, key=itemgetter(1), reverse=True)
+
+    for key, value in assignees_grant.items():
+        temp_list = []
+        temp_list.append(key[0])
+        temp_list.append(key[1])
+        temp_list.append(value)
+        temp_list.append(key[2])
+        temp_list.append(key[3])
+        if key[1] != "":
+            assignees_grant_row.append(temp_list)
+    rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
+    fl_srt_assign = fl.replace(".csv", "_by_assignee.csv")
+    with open(fl_srt_assign, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_sorted_by_count:
+            writer.writerow(row)
+    print "Success! File -> " + str(fl_srt_assign)
+
+    fl_srt_assign_grnt = fl.replace(".csv", "_by_grant.csv")
+    with open(fl_srt_assign_grnt, 'w') as write_to:
+        writer = csv.writer(write_to, delimiter=',',
+                                      quotechar='"', 
+                                      quoting=csv.QUOTE_ALL)
+        writer.writerow(['assignee',
+                         'grant year', 
+                         'count', 
+                         'country', 
+                         'country code'])
+        for row in rows_gr_srt_by_assig:
+            writer.writerow(row)
+    print "Success! File -> " + str(fl_srt_assign_grnt)
+
+
 # patents.google.com
 if SEARCH_IN == "g":
-    query_url = None
-    query_filename = None
-    if " " in QUERY:
-        query_url = QUERY.replace(" ", "%2B")
-        query_filename = QUERY.replace(" ", "_")
+    for QUERY in QUERIES:
+        query_url = None
+        query_filename = None
+        if " " in QUERY:
+            query_url = QUERY.replace(" ", "%2B")
+            query_filename = QUERY.replace(" ", "_")
 
-    print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
+        print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
 
-    years = abs(int(YEAR_TO) - int(YEAR_FROM))
-    days = 365 * (years + 1)
-    base_date = None
-    if YEAR_FROM >= YEAR_TO:
-        base_date = YEAR_FROM
-    else:
-        base_date = YEAR_TO
+        years = abs(int(YEAR_TO) - int(YEAR_FROM))
+        days = 365 * (years + 1)
+        base_date = None
+        if YEAR_FROM >= YEAR_TO:
+            base_date = YEAR_FROM
+        else:
+            base_date = YEAR_TO
 
-    base_date = base_date + "1231"
-    base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
-    date_list = [datetime.datetime.strftime(base_date - 
-                 datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
-    date_list1 = date_list[1:]
-    date_list2 = date_list[:-1]
+        base_date = base_date + "1231"
+        base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
+        date_list = [datetime.datetime.strftime(base_date - 
+                     datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
+        date_list1 = date_list[1:]
+        date_list2 = date_list[:-1]
 
-    if not os.path.exists("tmp"):
-        os.makedirs("tmp")
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
 
-    errors_ = []
-    def retriever(i, j):
-        url = "https://patents.google.com/xhr/query?" + \
-              "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
-              .format(query_url, j, i)
-        filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
+        errors_ = []
+        def retriever(i, j):
+            url = "https://patents.google.com/xhr/query?" + \
+                  "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
+                  .format(query_url, j, i)
+            filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
 
-        try:
-            testfile = urllib.URLopener()
-            testfile.retrieve(url, filename)
-            if (url, filename) in errors_:
-                errors_.remove((url, filename))
-        except:
-            time.sleep(1)
-            if (url, filename) not in errors_:
-                errors_.append((url, filename))
+            try:
+                testfile = urllib.URLopener()
+                testfile.retrieve(url, filename)
+                if (url, filename) in errors_:
+                    errors_.remove((url, filename))
+            except:
+                time.sleep(1)
+                if (url, filename) not in errors_:
+                    errors_.append((url, filename))
 
-    def add_retriever(url, filename):
-        try:
-            newfile = urllib.URLopener()
-            newfile.retrieve(url, filename)
-            if (url, filename) in errors_:
-                errors_.remove((url, filename))
-        except:
-            if (url, filename) not in errors_:
-                errors_.append((url, filename))
+        def add_retriever(url, filename):
+            try:
+                newfile = urllib.URLopener()
+                newfile.retrieve(url, filename)
+                if (url, filename) in errors_:
+                    errors_.remove((url, filename))
+            except:
+                if (url, filename) not in errors_:
+                    errors_.append((url, filename))
 
-    fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
-                                          YEAR_FROM, YEAR_TO)
-    open(fl, 'a').close()
+        # fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
+        #                                       YEAR_FROM, YEAR_TO)
+        # open(fl, 'a').close()
 
-    threads = []
-    for i, j in zip(date_list1, date_list2):
-        t = threading.Thread(target=retriever, args=(i, j,))
-        threads.append(t)
+        threads = []
+        for i, j in zip(date_list1, date_list2):
+            t = threading.Thread(target=retriever, args=(i, j,))
+            threads.append(t)
 
-    started = []
-    for x in threads:
-        x.start()
-        started.append(x)
-        if threads.index(x) % 100 == 0:
-            for x in started:
-                x.join()
-            started = []
+        started = []
+        for x in threads:
+            x.start()
+            started.append(x)
+            if threads.index(x) % 100 == 0:
+                for x in started:
+                    x.join()
+                started = []
 
-    for x in started:
-        x.join()
+        for x in started:
+            x.join()
 
-    while len(errors_) != 0:
-        print "URLs left: " + str(len(errors_))
-        thre = []
-        for error_ in errors_:
-            url = error_[0]
-            filename = error_[1]
-            t = threading.Thread(target=add_retriever, 
-                                 args=(url, filename,))
-            thre.append(t)
-        for l in thre:
-            time.sleep(0.1)     
-            l.start()
-        for l in thre:
-            l.join()
-
+        while len(errors_) != 0:
+            print "URLs left: " + str(len(errors_))
+            thre = []
+            for error_ in errors_:
+                url = error_[0]
+                filename = error_[1]
+                t = threading.Thread(target=add_retriever, 
+                                     args=(url, filename,))
+                thre.append(t)
+            for l in thre:
+                time.sleep(0.1)     
+                l.start()
+            for l in thre:
+                l.join()
+    
+    fl = "g_QUERIES_from_{0}_to_{1}.csv".format(YEAR_FROM, YEAR_TO)
     with open(fl, 'w') as write_to:
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
@@ -184,63 +236,20 @@ if SEARCH_IN == "g":
             else:
                 assignees_grant[(line[2], line[11], line[9], line[10])] = 1
 
-    rows = []
-    for assign in assignees_row:
-        row = []
-        row.append(assign[0])
-        row.append(assignees[assign[0]])
-        row.append(assign[1])
-        row.append(assign[2])
-        rows.append(row)
-    rows_sorted_by_count = sorted(rows, key=itemgetter(1), reverse=True)
-
-    for key, value in assignees_grant.items():
-        temp_list = []
-        temp_list.append(key[0])
-        temp_list.append(key[1])
-        temp_list.append(value)
-        temp_list.append(key[2])
-        temp_list.append(key[3])
-        if key[1] != "":
-            assignees_grant_row.append(temp_list)
-    rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
-    fl_srt_assign = fl.replace(".csv", "_by_assignee.csv")
-    with open(fl_srt_assign, 'w') as write_to:
-        writer = csv.writer(write_to, delimiter=',',
-                                      quotechar='"', 
-                                      quoting=csv.QUOTE_ALL)
-        writer.writerow(['assignee', 
-                         'count', 
-                         'country', 
-                         'country code'])
-        for row in rows_sorted_by_count:
-            writer.writerow(row)
-    print "Success! File -> " + str(fl_srt_assign)
-
-    fl_srt_assign_grnt = fl.replace(".csv", "_by_grant.csv")
-    with open(fl_srt_assign_grnt, 'w') as write_to:
-        writer = csv.writer(write_to, delimiter=',',
-                                      quotechar='"', 
-                                      quoting=csv.QUOTE_ALL)
-        writer.writerow(['assignee',
-                         'grant year', 
-                         'count', 
-                         'country', 
-                         'country code'])
-        for row in rows_gr_srt_by_assig:
-            writer.writerow(row)
-    print "Success! File -> " + str(fl_srt_assign_grnt)
-
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
 
 # www.patentsview.org
 elif SEARCH_IN == "p":
+    q = ""
+    for QUERY in QUERIES: #code here
+        # q += '{"_text_phrase":{"patent_title":"%s"}},' % QUERY
+        q += '{"_text_phrase":{"patent_abstract":"%s"}},' % QUERY
     query = 'http://www.patentsview.org/api/patents/query?q={"_and":[' \
-            '{"_or":[{"_text_phrase":{"patent_title":"%s"}},' \
-            '{"_text_phrase":{"patent_abstract":"%s"}}]},' \
+            '{"_or":[%s]},' \
             '{"_gte":{"app_date":"%s-01-01"}},' \
             '{"_lte":{"app_date":"%s-01-01"}}]}' \
+            '&o={"page":1,"per_page":10000}' \
             '&f=["patent_number",' \
                 '"patent_title",' \
                 '"patent_date",' \
@@ -253,18 +262,19 @@ elif SEARCH_IN == "p":
                 '"app_date",' \
                 '"inventor_first_name",' \
                 '"inventor_last_name"]' \
-                % (QUERY, QUERY, YEAR_FROM, YEAR_TO)
+                % (q[:-1], YEAR_FROM, YEAR_TO)
 
+    print query
     url = query.replace(" ", "%20")
     response = urllib.urlopen(url)
     dat = json.load(response)
     data = dat['patents']
 
-    filename = "{0}_from_{1}_to_{2}.csv".format(QUERY, YEAR_FROM, YEAR_TO) \
+    fl = "p_QUERIES_from_{0}_to_{1}.csv".format(YEAR_FROM, YEAR_TO) \
                                         .replace(" ", "_")
     # print data
-    # print filename
-    with open(filename, 'w') as write_to:
+    # print fl
+    with open(fl, 'w') as write_to:
         
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
@@ -303,78 +313,33 @@ elif SEARCH_IN == "p":
                 row.append(CCODES[patent['assignees'][0]['assignee_country']])
                 row.append(patent['assignees'][0]['assignee_country'])
             except:
-                pass
+                row.append("-")
+                row.append("-")
             row_utf = [x.encode('utf-8') for x in row]
             writer.writerow(row_utf)
-    print "Success! File -> " + str(filename)
-
+    print "Success! File -> " + str(fl)
 
     assignees = {}
     assignees_grant = {}
     assignees_row = []
     assignees_grant_row = []
-    with open(filename, 'r') as read_from:
+    with open(fl, 'r') as read_from:
         datareader = csv.reader(read_from, delimiter=',', quotechar='"')
         iterdatareader = iter(datareader)
         next(iterdatareader)
         for line in iterdatareader:
             if line[2] != "":
-                print line
                 if line[2] in assignees:
                     assignees[line[2]] += 1
                 else:
                     assignees[line[2]] = 1
+                    # print line
+                    # print line[2]
+                    # print line[7]
+                    # print line[8]
                     assignees_row.append((line[2], line[7], line[8]))
                 if (line[2], line[6], line[7], line[8]) in assignees_grant:
                     assignees_grant[(line[2], line[6], line[7], line[8])] += 1
                 else:
                     assignees_grant[(line[2], line[6], line[7], line[8])] = 1
-
-    rows = []
-    for assign in assignees_row:
-        row = []
-        row.append(assign[0])
-        row.append(assignees[assign[0]])
-        row.append(assign[1])
-        row.append(assign[2])
-        rows.append(row)
-    rows_sorted_by_count = sorted(rows, key=itemgetter(1), reverse=True)
-
-    for key, value in assignees_grant.items():
-        temp_list = []
-        temp_list.append(key[0])
-        temp_list.append(key[1])
-        temp_list.append(value)
-        temp_list.append(key[2])
-        temp_list.append(key[3])
-        if key[1] != "":
-            assignees_grant_row.append(temp_list)
-    rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
-    fl_srt_assign = filename.replace(".csv", "_by_assignee.csv")
-    with open(fl_srt_assign, 'w') as write_to:
-        writer = csv.writer(write_to, delimiter=',',
-                                      quotechar='"', 
-                                      quoting=csv.QUOTE_ALL)
-        writer.writerow(['assignee', 
-                         'count', 
-                         'country', 
-                         'country code'])
-        for row in rows_sorted_by_count:
-            writer.writerow(row)
-    print "Success! File -> " + str(fl_srt_assign)
-
-    fl_srt_assign_grnt = filename.replace(".csv", "_by_grant.csv")
-    with open(fl_srt_assign_grnt, 'w') as write_to:
-        writer = csv.writer(write_to, delimiter=',',
-                                      quotechar='"', 
-                                      quoting=csv.QUOTE_ALL)
-        writer.writerow(['assignee',
-                         'grant year', 
-                         'count', 
-                         'country', 
-                         'country code'])
-        for row in rows_gr_srt_by_assig:
-            writer.writerow(row)
-    print "Success! File -> " + str(fl_srt_assign_grnt)
-
-
+CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row)
