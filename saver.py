@@ -97,95 +97,101 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
 
 # patents.google.com
 if SEARCH_IN == "g":
+    query_url = ""
+    query_filename = ""
     for QUERY in QUERIES:
-        query_url = None
-        query_filename = None
         if " " in QUERY:
-            query_url = QUERY.replace(" ", "%2B")
-            query_filename = QUERY.replace(" ", "_")
-
-        print "Downloading '" + QUERY + "' from " + YEAR_FROM + " to " + YEAR_TO
-
-        years = abs(int(YEAR_TO) - int(YEAR_FROM))
-        days = 365 * (years + 1)
-        base_date = None
-        if YEAR_FROM >= YEAR_TO:
-            base_date = YEAR_FROM
+            query_url += QUERY.replace(" ", "%2B")
+            # query_filename = QUERY.replace(" ", "_")
         else:
-            base_date = YEAR_TO
+            query_url += QUERY
+        query_url += "%2C"
+    print query_url
+    query_filename = "queries"
 
-        base_date = base_date + "1231"
-        base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
-        date_list = [datetime.datetime.strftime(base_date - 
-                     datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
-        date_list1 = date_list[1:]
-        date_list2 = date_list[:-1]
+    print "Downloading queries from " + YEAR_FROM + " to " + YEAR_TO
 
-        if not os.path.exists("tmp"):
-            os.makedirs("tmp")
+    years = abs(int(YEAR_TO) - int(YEAR_FROM))
+    days = 365 * (years + 1)
+    base_date = None
+    if YEAR_FROM >= YEAR_TO:
+        base_date = YEAR_FROM
+    else:
+        base_date = YEAR_TO
 
-        errors_ = []
-        def retriever(i, j):
-            url = "https://patents.google.com/xhr/query?" + \
-                  "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
-                  .format(query_url, j, i)
-            filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
+    base_date = base_date + "1231"
+    base_date = datetime.datetime.strptime(base_date, '%Y%m%d')
+    date_list = [datetime.datetime.strftime(base_date - 
+                 datetime.timedelta(days=x), '%Y%m%d') for x in range(0, days)]
+    date_list1 = date_list[1:]
+    date_list2 = date_list[:-1]
 
-            try:
-                testfile = urllib.URLopener()
-                testfile.retrieve(url, filename)
-                if (url, filename) in errors_:
-                    errors_.remove((url, filename))
-            except:
-                time.sleep(1)
-                if (url, filename) not in errors_:
-                    errors_.append((url, filename))
+    if not os.path.exists("tmp"):
+        os.makedirs("tmp")
 
-        def add_retriever(url, filename):
-            try:
-                newfile = urllib.URLopener()
-                newfile.retrieve(url, filename)
-                if (url, filename) in errors_:
-                    errors_.remove((url, filename))
-            except:
-                if (url, filename) not in errors_:
-                    errors_.append((url, filename))
+    errors_ = []
+    def retriever(i, j):
+        
+        url = "https://patents.google.com/xhr/query?" + \
+              "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
+              .format(query_url[:-3], j, i)
+        filename = "tmp/{0}_from_{1}_to_{2}.csv".format(query_filename, i, j)
 
-        # fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
-        #                                       YEAR_FROM, YEAR_TO)
-        # open(fl, 'a').close()
+        try:
+            testfile = urllib.URLopener()
+            testfile.retrieve(url, filename)
+            if (url, filename) in errors_:
+                errors_.remove((url, filename))
+        except:
+            time.sleep(1)
+            if (url, filename) not in errors_:
+                errors_.append((url, filename))
 
-        threads = []
-        for i, j in zip(date_list1, date_list2):
-            t = threading.Thread(target=retriever, args=(i, j,))
-            threads.append(t)
+    def add_retriever(url, filename):
+        try:
+            newfile = urllib.URLopener()
+            newfile.retrieve(url, filename)
+            if (url, filename) in errors_:
+                errors_.remove((url, filename))
+        except:
+            if (url, filename) not in errors_:
+                errors_.append((url, filename))
 
-        started = []
-        for x in threads:
-            x.start()
-            started.append(x)
-            if threads.index(x) % 100 == 0:
-                for x in started:
-                    x.join()
-                started = []
+    # fl = "{0}_from_{1}_to_{2}.csv".format(query_filename, 
+    #                                       YEAR_FROM, YEAR_TO)
+    # open(fl, 'a').close()
 
-        for x in started:
-            x.join()
+    threads = []
+    for i, j in zip(date_list1, date_list2):
+        t = threading.Thread(target=retriever, args=(i, j,))
+        threads.append(t)
 
-        while len(errors_) != 0:
-            print "URLs left: " + str(len(errors_))
-            thre = []
-            for error_ in errors_:
-                url = error_[0]
-                filename = error_[1]
-                t = threading.Thread(target=add_retriever, 
-                                     args=(url, filename,))
-                thre.append(t)
-            for l in thre:
-                time.sleep(0.1)     
-                l.start()
-            for l in thre:
-                l.join()
+    started = []
+    for x in threads:
+        x.start()
+        started.append(x)
+        if threads.index(x) % 100 == 0:
+            for x in started:
+                x.join()
+            started = []
+
+    for x in started:
+        x.join()
+
+    while len(errors_) != 0:
+        print "URLs left: " + str(len(errors_))
+        thre = []
+        for error_ in errors_:
+            url = error_[0]
+            filename = error_[1]
+            t = threading.Thread(target=add_retriever, 
+                                 args=(url, filename,))
+            thre.append(t)
+        for l in thre:
+            time.sleep(0.1)     
+            l.start()
+        for l in thre:
+            l.join()
     
     fl = "g_QUERIES_from_{0}_to_{1}.csv".format(YEAR_FROM, YEAR_TO)
     with open(fl, 'w') as write_to:
