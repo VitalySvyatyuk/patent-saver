@@ -106,7 +106,6 @@ if SEARCH_IN == "g":
         else:
             query_url += QUERY
         query_url += "%2C"
-    print query_url
     query_filename = "queries"
 
     print "Downloading queries from " + YEAR_FROM + " to " + YEAR_TO
@@ -131,7 +130,6 @@ if SEARCH_IN == "g":
 
     errors_ = []
     def retriever(i, j):
-        
         url = "https://patents.google.com/xhr/query?" + \
               "url=q%3D{0}%26before%3Dfiling%3A{1}%26after%3D{2}&download=true" \
               .format(query_url[:-3], j, i)
@@ -139,6 +137,9 @@ if SEARCH_IN == "g":
 
         try:
             testfile = urllib.URLopener()
+            # version = "Mozilla/5.0 (Windows; U; Windows NT 5.1; it; rv:1.8.1.11) Gecko/20071127 Firefox/2.0.0.11"
+            # testfile.addheaders = [('User-Agent', version), ('Accept', '*/*')]
+            # testfile.version = "Mozilla/5.0 (Windows; U; Windows NT 5.1; it; rv:1.8.1.11) Gecko/20071127 Firefox/2.0.0.11"
             testfile.retrieve(url, filename)
             if (url, filename) in errors_:
                 errors_.remove((url, filename))
@@ -216,31 +217,31 @@ if SEARCH_IN == "g":
                 for row in reader:
                     if row[0] != "id":
                         if row[0] != "search URL:":
-                            row.append(CCODES[row[0][:2]])
+                            row.append(CCODES[row[0][:2].upper()])
                             row.append(row[0][:2])
                             row.append(row[7][:4])
                             if row[7] != "":
                                 writer.writerow(row)
     print "Success! File -> " + str(fl)
 
-    assignees = {}
-    assignees_grant = {}
-    assignees_row = []
-    assignees_grant_row = []
-    with open(fl, 'r') as read_from:
-        datareader = csv.reader(read_from, delimiter=',', quotechar='"')
-        iterdatareader = iter(datareader)
-        next(iterdatareader)
-        for line in iterdatareader:
-            if line[2] in assignees:
-                assignees[line[2]] += 1
-            else:
-                assignees[line[2]] = 1
-                assignees_row.append((line[2], line[9], line[10]))
-            if (line[2], line[11], line[9], line[10]) in assignees_grant:
-                assignees_grant[(line[2], line[11], line[9], line[10])] += 1
-            else:
-                assignees_grant[(line[2], line[11], line[9], line[10])] = 1
+    # assignees = {}
+    # assignees_grant = {}
+    # assignees_row = []
+    # assignees_grant_row = []
+    # with open(fl, 'r') as read_from:
+    #     datareader = csv.reader(read_from, delimiter=',', quotechar='"')
+    #     iterdatareader = iter(datareader)
+    #     next(iterdatareader)
+    #     for line in iterdatareader:
+    #         if line[2] in assignees:
+    #             assignees[line[2]] += 1
+    #         else:
+    #             assignees[line[2]] = 1
+    #             assignees_row.append((line[2], line[9], line[10]))
+    #         if (line[2], line[11], line[9], line[10]) in assignees_grant:
+    #             assignees_grant[(line[2], line[11], line[9], line[10])] += 1
+    #         else:
+    #             assignees_grant[(line[2], line[11], line[9], line[10])] = 1
 
     if os.path.exists("tmp"):
         shutil.rmtree("tmp")
@@ -270,7 +271,6 @@ elif SEARCH_IN == "p":
                 '"inventor_last_name"]' \
                 % (q[:-1], YEAR_FROM, YEAR_TO)
 
-    print query
     url = query.replace(" ", "%20")
     response = urllib.urlopen(url)
     dat = json.load(response)
@@ -285,15 +285,18 @@ elif SEARCH_IN == "p":
         writer = csv.writer(write_to, delimiter=',',
                                       quotechar='"', 
                                       quoting=csv.QUOTE_ALL)
-        writer.writerow(['number',  
+        writer.writerow(['id',  
                          'title',
                          'assignee',
-                         'inventor/author', 
-                         'filing/creation date', 
-                         'grant date', 
-                         'grant year',
+                         'inventor/author',
+                         'priority date', 
+                         'filing/creation date',
+                         'publication date',  
+                         'grant date',
+                         'result link', 
                          'country',
-                         'country code'])
+                         'country code',
+                         'grant year',])
         for patent in data:
             row = []
             row.append(patent['patent_number'])
@@ -312,40 +315,38 @@ elif SEARCH_IN == "p":
                            inventor['inventor_last_name'] + ", "
             inventors = authors[:-2]
             row.append(inventors)
+            row.append("") # priority date
             row.append(patent['applications'][0]['app_date'])
+            row.append("") # publication date
             row.append(patent['patent_date'])
-            row.append(patent['patent_year'])
+            row.append("") # result link
             try:
                 row.append(CCODES[patent['assignees'][0]['assignee_country']])
                 row.append(patent['assignees'][0]['assignee_country'])
             except:
-                row.append("-")
-                row.append("-")
+                row.append("")
+                row.append("")
+            row.append(patent['patent_year'])
             row_utf = [x.encode('utf-8') for x in row]
             writer.writerow(row_utf)
     print "Success! File -> " + str(fl)
 
-    assignees = {}
-    assignees_grant = {}
-    assignees_row = []
-    assignees_grant_row = []
-    with open(fl, 'r') as read_from:
-        datareader = csv.reader(read_from, delimiter=',', quotechar='"')
-        iterdatareader = iter(datareader)
-        next(iterdatareader)
-        for line in iterdatareader:
-            if line[2] != "":
-                if line[2] in assignees:
-                    assignees[line[2]] += 1
-                else:
-                    assignees[line[2]] = 1
-                    # print line
-                    # print line[2]
-                    # print line[7]
-                    # print line[8]
-                    assignees_row.append((line[2], line[7], line[8]))
-                if (line[2], line[6], line[7], line[8]) in assignees_grant:
-                    assignees_grant[(line[2], line[6], line[7], line[8])] += 1
-                else:
-                    assignees_grant[(line[2], line[6], line[7], line[8])] = 1
+assignees = {}
+assignees_grant = {}
+assignees_row = []
+assignees_grant_row = []
+with open(fl, 'r') as read_from:
+    datareader = csv.reader(read_from, delimiter=',', quotechar='"')
+    iterdatareader = iter(datareader)
+    next(iterdatareader)
+    for line in iterdatareader:
+        if line[2] in assignees:
+            assignees[line[2]] += 1
+        else:
+            assignees[line[2]] = 1
+            assignees_row.append((line[2], line[9], line[10]))
+        if (line[2], line[11], line[9], line[10]) in assignees_grant:
+            assignees_grant[(line[2], line[11], line[9], line[10])] += 1
+        else:
+            assignees_grant[(line[2], line[11], line[9], line[10])] = 1
 CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row)
