@@ -96,7 +96,17 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
 
 
 # patents.google.com
+# Google Custom Search APIkey - AIzaSyD7U1HcI5m9IqTpXKrRIELTLPV_NzJ1lno
+# Google Custom Search Engine - 000145977411789292541:ifva_vwmntm
 if SEARCH_IN == "g":
+
+
+
+
+
+
+
+
     query_url = ""
     query_filename = ""
     for QUERY in QUERIES:
