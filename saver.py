@@ -64,6 +64,7 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
         temp_list.append(value)
         temp_list.append(key[2])
         temp_list.append(key[3])
+        print temp_list
         if key[1] != "":
             assignees_grant_row.append(temp_list)
     rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
@@ -96,17 +97,7 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
 
 
 # patents.google.com
-# Google Custom Search APIkey - AIzaSyD7U1HcI5m9IqTpXKrRIELTLPV_NzJ1lno
-# Google Custom Search Engine - 000145977411789292541:ifva_vwmntm
 if SEARCH_IN == "g":
-
-
-
-
-
-
-
-
     query_url = ""
     query_filename = ""
     for QUERY in QUERIES:
@@ -326,9 +317,9 @@ elif SEARCH_IN == "p":
             inventors = authors[:-2]
             row.append(inventors)
             row.append("") # priority date
-            row.append(patent['applications'][0]['app_date'])
+            row.append(patent['applications'][0]['app_date']) # filing/creation date
             row.append("") # publication date
-            row.append(patent['patent_date'])
+            row.append(patent['patent_date']) # grant date
             row.append("") # result link
             try:
                 row.append(CCODES[patent['assignees'][0]['assignee_country']])
