@@ -61,10 +61,9 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
         temp_list = []
         temp_list.append(key[0])
         temp_list.append(key[1])
-        temp_list.append(key[2])
         temp_list.append(value)
+        temp_list.append(key[2])
         temp_list.append(key[3])
-        temp_list.append(key[4])
         if key[1] != "":
             assignees_grant_row.append(temp_list)
     rows_gr_srt_by_assig = sorted(assignees_grant_row, key=itemgetter(0, 1))
@@ -87,7 +86,6 @@ def CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row):
                                       quotechar='"', 
                                       quoting=csv.QUOTE_ALL)
         writer.writerow(['assignee',
-                         'grant year'
                          'filing year', 
                          'count', 
                          'country', 
@@ -192,8 +190,8 @@ with open(fl, 'r') as read_from:
         else:
             assignees[line[2]] = 1
             assignees_row.append((line[2], line[9], line[10]))
-        if (line[2], line[11], line[12], line[9], line[10]) in assignees_grant:
-            assignees_grant[(line[2], line[11], line[12], line[9], line[10])] += 1
+        if (line[2], line[12], line[9], line[10]) in assignees_grant:
+            assignees_grant[(line[2], line[12], line[9], line[10])] += 1
         else:
-            assignees_grant[(line[2], line[11], line[12], line[9], line[10])] = 1
+            assignees_grant[(line[2], line[12], line[9], line[10])] = 1
 CSVs(fl, assignees, assignees_grant, assignees_row, assignees_grant_row)
