@@ -154,11 +154,16 @@ with open(fl, 'w') as write_to:
         else:
             row.append("")
         authors = ""
-        for inventor in patent['inventors']:
-            authors += inventor['inventor_first_name'] + \
-                       inventor['inventor_last_name'] + ", "
-        inventors = authors[:-2]
+        try:
+            for inventor in patent['inventors']:
+                authors += inventor['inventor_first_name'] + \
+                           inventor['inventor_last_name'] + ", "
+            inventors = authors[:-2]
+        except TypeError:
+            inventors = authors
         row.append(inventors)
+        if row[2] == "":
+            row[2] = inventors
         row.append("") # priority date
         row.append(patent['applications'][0]['app_date']) # filing/creation date
         row.append("") # publication date
